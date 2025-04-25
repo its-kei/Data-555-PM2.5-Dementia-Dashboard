@@ -1,0 +1,113 @@
+---
+title: "PM2.5 Exposure and Dementia Risk"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+output_file: index.html
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(plotly)
+library(DT)
+library(crosstalk)
+library(crosstalk)
+```
+
+```{r data}
+EHBS <- read.csv("C:/Users/keita/OneDrive - Emory University/Thesis - Anke Huels/Dataset/ISEEMarch19data2.csv")
+
+```
+
+### Age Distribution of Study Participants
+
+This widget looks at the calculate age of the participants in the EHBS cohort at each visit. This will allow us to create a scale that is adjustable and see how many participants also lie within that age of age ranges. It is normally distributed, and will allow us to explore specific age range afefcts.
+
+```{r}
+# Shared data setup for filtering
+shared_data <- SharedData$new(EHBS, ~pt_calculated_age)
+
+# Age range slider
+age_slider <- filter_slider(
+  "age_range", "Select Age Range:",
+  shared_data, ~pt_calculated_age,
+  step = 1, width = "100%"
+)
+
+# Descriptive stats function
+calculate_stats <- function(data) {
+  age <- data$pt_calculated_age
+  stats <- data.frame(
+    Statistic = c("Mean", "Median", "Standard Deviation", "Minimum", "Maximum", "Number of Participants"),
+    Value = c(
+      mean(age, na.rm = TRUE),
+      median(age, na.rm = TRUE),
+      sd(age, na.rm = TRUE),
+      min(age, na.rm = TRUE),
+      max(age, na.rm = TRUE),
+      length(age)
+    )
+  )
+  return(stats)
+}
+
+# Interactive histogram
+age_plot <- plot_ly(shared_data, x = ~pt_calculated_age, type = "histogram",
+                    marker = list(color = 'rgba(50, 171, 96, 0.6)')) %>%
+  layout(
+    title = "Age Distribution of Participants",
+    xaxis = list(title = "Age (years)"),
+    yaxis = list(title = "Number of Participants")
+  )
+
+# Summary stats
+stats_table <- calculate_stats(shared_data$data(withSelection = TRUE))
+
+# Interactive table
+stats_dt <- datatable(stats_table, options = list(pageLength = 6, dom = 't'), rownames = FALSE) %>%
+  formatRound(columns = "Value", digits = 2)
+
+# Layout
+bscols(
+  age_slider,
+  bscols(age_plot, stats_dt, widths = c(6, 6))
+)
+```
+
+### Forest Plot: Cognitive Tests and PM2.5 Exposure
+This widget is looking at 5 different cognitive assessments and multi-year air pollution averages, which will allow us to explore the PM2.5 and Rline2.5 air pollution concentrations in the Emory Healthy Brain Study cohorts. We can see that most assocations are null, showing that in this cohort, there is no signfiicant assocation between air pollution exposure and cognitive function.
+
+```{r}
+# Load and format all test data
+tests <- c("Delay Recall Test", "Recognition Test", "Number Span Test", 
+           "Multilingual Naming Test", "Animal Fluency Test")
+
+forest_data <- map_df(tests, ~ {
+  df <- read_excel("C:/Users/keita/OneDrive - Emory University/Thesis - Anke Huels/Codes/5, 10, 15 year only/Plots Final_LMM_results_all_exposures.xlsx", sheet = .x)
+  df$Test <- .x
+  df
+})
+
+# Clean column names assuming standard format
+colnames(forest_data) <- tolower(gsub(" ", "_", colnames(forest_data)))
+
+# Derive exposure variable name (inferred from column index if needed)
+forest_data$exposure <- forest_data$...1
+
+# Create plot
+forest_plot <- forest_data %>%
+  ggplot(aes(x = estimate, y = reorder(exposure, estimate), color = test)) +
+  geom_point(size = 3) +
+  geom_errorbarh(aes(xmin = `2.5_%`, xmax = `97.5_%`), height = 0.2) +
+  facet_wrap(~ test, scales = "free_y") +
+  labs(
+    title = "Association Between PM2.5 Exposure and Cognitive Scores",
+    x = "Estimate (95% CI)",
+    y = "Exposure Type"
+  ) +
+  theme_minimal(base_size = 12)
+
+ggplotly(forest_plot, tooltip = c("test", "exposure", "estimate", "2.5_%", "97.5_%"))
+```
