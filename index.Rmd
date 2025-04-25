@@ -111,3 +111,25 @@ forest_plot <- forest_data %>%
 
 ggplotly(forest_plot, tooltip = c("test", "exposure", "estimate", "2.5_%", "97.5_%"))
 ```
+
+### Dataset Information {.tabset}
+
+#### Data Description
+
+- **Source**: Emory Healthy Brain Study and SEDAC and RLine Air Pollution Datasets
+- **Sample Size**: ~3500 participants
+- **Population**: Participants in the Emory Healthy Brain Study in Atlata, GA
+- **Time Frame**: 2000–2020
+
+#### Impact Statement
+
+This dashboard illustrates the significant link between air pollution and cognitive decline in older adults. Insights from these findings can support public health interventions and environmental policies.
+
+#### GitHub and Source Code
+
+- [GitHub Repository](https://github.com/its-kei/Data-555-PM2.5-Dementia-Dashboard)
+
+```{r}
+# Optionally display the data as a searchable table
+DT::datatable(forest_data)
+```
